@@ -17,6 +17,10 @@
 const express = require('express');
 const courierFactory = require('./utils/courier.factory');
 const batchBookingService = require('./utils/batch.booking.service');
+const {
+  markFulfillment,
+  tagOrder,
+} = require('../fulfillment-kit/utils/shopify.fulfillment');
 
 const router = express.Router();
 
@@ -32,6 +36,80 @@ const router = express.Router();
 // ----------------------------------------------------------------------------
 const authenticateToken = (req, res, next) => next();
 const requirePermission = () => (req, res, next) => next();
+
+// ----------------------------------------------------------------------------
+// Shared helper: book one parcel and (if booking succeeded) mark it fulfilled
+// on Shopify, plus optional order tagging. Used by both the single
+// /book-and-fulfill endpoint and the parallel /batch-book-and-fulfill endpoint.
+//
+// Throws on validation failure (missing courier / Shopify fields).
+// Returns:
+//   {
+//     booking:     <standardized courier response>,            // .success === true/false
+//     fulfillment: <markFulfillment response> | null,           // null iff booking failed
+//     tag:         <tagOrder response> | null                   // null iff not requested or skipped
+//   }
+//
+// Fulfillment / tag failures are LOGGED but do not throw — the booking is
+// the primary outcome and is always returned to the caller intact.
+// ----------------------------------------------------------------------------
+async function bookAndFulfillOne(payload) {
+  const shopify = payload?.shopify || {};
+
+  if (!payload?.courier) throw new Error('courier is required');
+  if (!shopify.platform_store_id || !shopify.access_token) {
+    throw new Error('shopify.platform_store_id and shopify.access_token are required');
+  }
+  if (!shopify.fulfillment_order_id) {
+    throw new Error('shopify.fulfillment_order_id is required');
+  }
+
+  // 1. Book the parcel.
+  const courierService = courierFactory.getService(payload.courier);
+  const bookResult = await courierService.bookOrder(payload);
+
+  if (!bookResult.success) {
+    return { booking: bookResult, fulfillment: null, tag: null };
+  }
+
+  // 2. Booking succeeded — mark fulfilled on Shopify (non-fatal on failure).
+  const storeCreds = {
+    platform_store_id: shopify.platform_store_id,
+    access_token:      shopify.access_token,
+  };
+
+  const markResult = await markFulfillment({
+    credentials:          storeCreds,
+    fulfillment_order_id: shopify.fulfillment_order_id,
+    tracking_number:      bookResult.tracking_number,
+    tracking_url:         bookResult.tracking_url,
+    courier:              bookResult.courier_name,
+    notify_customer:      shopify.notify_customer !== false, // default true
+  });
+
+  if (markResult.status !== 'success') {
+    console.error('[book-and-fulfill] markFulfillment failed but booking is preserved:', markResult.error);
+  }
+
+  // 3. Optional tag (only if mark succeeded and the caller asked for it).
+  let tagResult = null;
+  if (
+    markResult.status === 'success'
+    && shopify.tags
+    && shopify.platform_order_id
+  ) {
+    tagResult = await tagOrder({
+      credentials:       storeCreds,
+      platform_order_id: shopify.platform_order_id,
+      tags:              shopify.tags,
+    });
+    if (tagResult.status !== 'success') {
+      console.error('[book-and-fulfill] tagOrder failed:', tagResult.error);
+    }
+  }
+
+  return { booking: bookResult, fulfillment: markResult, tag: tagResult };
+}
 
 /**
  * 1. Single standardized booking.
@@ -262,6 +340,158 @@ router.post('/tcs/auth-token', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('[tcs/auth-token] failed:', error);
     return res.status(500).json({ success: false, error: 'TCS auth-token request failed: ' + error.message });
+  }
+});
+
+/**
+ * 7. Combined book + mark-fulfilled in a single round trip.
+ *
+ *  - Books the parcel with the chosen courier (same logic as /book-standardized).
+ *  - On booking success, marks the Shopify fulfillment order as fulfilled with
+ *    the returned tracking info. Fulfillment failure is logged but does NOT
+ *    fail the request — the booking is the primary outcome and is preserved.
+ *  - If `shopify.tags` and `shopify.platform_order_id` are present and the
+ *    fulfillment succeeded, the order is also tagged.
+ *
+ * Body shape:
+ *   {
+ *     // ── courier fields (identical to /book-standardized) ──
+ *     courier: "LCS" | "TCS" | "LEOPARDS",
+ *     credentials | courier_account_id,
+ *     order_info, customer_info, courier_data,
+ *
+ *     // ── shopify fields ──
+ *     shopify: {
+ *       platform_store_id:    "mystore.myshopify.com",
+ *       access_token:         "shpat_...",
+ *       fulfillment_order_id: "1234567890",   // REQUIRED, explicit
+ *       notify_customer:      true,            // optional, default true
+ *       platform_order_id:    "5551234567890", // optional — only needed if tagging
+ *       tags:                 ["Packed"]       // optional
+ *     }
+ *   }
+ *
+ * Status codes:
+ *   200 — booking succeeded (fulfillment may or may not have succeeded).
+ *   400 — booking failed, or the request body was missing required fields.
+ *   500 — unexpected exception.
+ */
+router.post('/book-and-fulfill', authenticateToken, requirePermission('orders:book'), async (req, res) => {
+  try {
+    const result = await bookAndFulfillOne(req.body || {});
+    const ok = result.booking?.success === true;
+    return res.status(ok ? 200 : 400).json({ success: ok, ...result });
+  } catch (error) {
+    // Thrown only for validation failures (missing courier / shopify fields)
+    // or unexpected exceptions.
+    console.error('[book-and-fulfill] error:', error);
+    const isValidation = /required/i.test(error.message || '');
+    return res.status(isValidation ? 400 : 500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 8. Bulk version of /book-and-fulfill.
+ *
+ *  - Accepts an array of payloads (each identical in shape to /book-and-fulfill).
+ *  - Books and marks each in PARALLEL. One failure never blocks the rest.
+ *  - Per-payload semantics match the single endpoint: booking is the primary
+ *    outcome; a fulfillment-mark failure is logged but the order is still
+ *    counted as successful in the response.
+ *
+ *  Body:
+ *    {
+ *      "payloads": [
+ *        { courier, credentials|courier_account_id, order_info, customer_info,
+ *          courier_data, shopify: { platform_store_id, access_token,
+ *                                    fulfillment_order_id, notify_customer?,
+ *                                    platform_order_id?, tags? } },
+ *        ...
+ *      ]
+ *    }
+ *
+ *  Status codes:
+ *    200 — every booking succeeded.
+ *    207 — partial: some bookings succeeded, some failed.
+ *    400 — every booking failed (or `payloads` was missing/empty).
+ *
+ *  Response body:
+ *    {
+ *      success: bool,
+ *      successful: [
+ *        { order_number, booking, fulfillment, tag }
+ *      ],
+ *      failed: [
+ *        { order_number, error, booking?: { ... } }     // booking present iff the courier rejected
+ *      ],
+ *      summary: { total, success, failed, fulfillment_failed }
+ *      //                                  ^^ orders whose booking succeeded
+ *      //                                     but whose Shopify mark failed.
+ *    }
+ */
+router.post('/batch-book-and-fulfill', authenticateToken, requirePermission('orders:book'), async (req, res) => {
+  try {
+    const { payloads } = req.body || {};
+
+    if (!Array.isArray(payloads) || payloads.length === 0) {
+      return res.status(400).json({ success: false, message: 'payloads array is required' });
+    }
+
+    const settled = await Promise.allSettled(payloads.map(p => bookAndFulfillOne(p)));
+
+    const out = {
+      successful: [],
+      failed: [],
+      summary: { total: payloads.length, success: 0, failed: 0, fulfillment_failed: 0 },
+    };
+
+    settled.forEach((res, i) => {
+      const payload = payloads[i];
+      const order_number = payload?.order_info?.order_number;
+
+      // Validation throw or unexpected exception.
+      if (res.status === 'rejected') {
+        out.failed.push({ order_number, error: res.reason?.message || 'Unknown error' });
+        out.summary.failed++;
+        return;
+      }
+
+      const value = res.value;
+
+      // Courier rejected the booking — preserve the booking detail for debugging.
+      if (!value.booking?.success) {
+        out.failed.push({
+          order_number,
+          error:   value.booking?.error || 'Booking failed',
+          booking: value.booking,
+        });
+        out.summary.failed++;
+        return;
+      }
+
+      // Booking succeeded. Mark may still have failed — that's non-fatal,
+      // but we surface it in `summary.fulfillment_failed` so the caller can act.
+      out.successful.push({
+        order_number,
+        booking:     value.booking,
+        fulfillment: value.fulfillment,
+        tag:         value.tag,
+      });
+      out.summary.success++;
+      if (value.fulfillment?.status !== 'success') out.summary.fulfillment_failed++;
+    });
+
+    const allFailed   = out.summary.success === 0;
+    const hasFailures = out.summary.failed > 0;
+
+    return res.status(allFailed ? 400 : hasFailures ? 207 : 200).json({
+      success: !allFailed,
+      ...out,
+    });
+
+  } catch (error) {
+    console.error('[batch-book-and-fulfill] unhandled error:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

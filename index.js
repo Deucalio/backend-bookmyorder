@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const express = require('express');
 const courierRoutes = require('./courier-module-kit/courier.routes');
+const fulfillmentRoutes = require('./fulfillment-kit/fulfillment.routes');
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/courier', courierRoutes);
+app.use('/api/fulfillment', fulfillmentRoutes);
 
 // Generic 404 / error handlers
 app.use((req, res) => {
@@ -32,5 +34,6 @@ app.use((err, req, res, next) => {
 const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
   console.log(`backend-bookmyorder listening on http://localhost:${PORT}`);
-  console.log(`Courier API mounted at /api/courier`);
+  console.log(`Courier      API mounted at /api/courier`);
+  console.log(`Fulfillment  API mounted at /api/fulfillment`);
 });
