@@ -1,0 +1,1999 @@
+{
+"openapi": "3.0.1",
+"info": {
+"title": "Ecom - Production",
+"version": "v1"
+},
+"servers": [
+{
+"url": "https://ociconnect.tcscourier.com/ecom"
+}
+],
+"paths": {
+"/api/authentication/token": {
+"get": {
+"tags": [
+"Authentication"
+],
+"summary": "To generate access token by tcs account credentials",
+"parameters": [
+{
+"name": "username",
+"in": "query",
+"description": "",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "password",
+"in": "query",
+"description": "",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/booking/create": {
+"post": {
+"tags": [
+"Booking"
+],
+"summary": "To create booking",
+"description": "Fields For Future Use consignmentno shipperinfo: { shippername address1 address2 address3 zip countrycode countryname mobile } consigneeinfo: { consigneecode zip countrycode countryname lat lng landmark mobile } vendorinfo: { name address1 address2 address3 citycode cityname mobile } shipmentinfo: { servicecode parametertype shipmentdate shippingtype currency declaredvalue transactiontype dsflag carrierslug } sku: { description quantity weight uom unitprice declaredvalue insuredvalue }",
+"requestBody": {
+"description": "",
+"content": {
+"application/json-patch+json": {
+"schema": {
+"$ref": "#/components/schemas/BookingRequest"
+},
+"example": {
+"accesstoken": "",
+"consignmentno": "",
+"shipperinfo": {
+"tcsaccount": "04011K1",
+"shippername": "Test",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"consigneeinfo": {
+"consigneecode": "C103",
+"firstname": "First name",
+"middlename": "Middle name",
+"lastname": "Last name",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"email": "test@test.com",
+"areacode": "KHI00001",
+"areaname": "Gulshan",
+"blockcode": "",
+"blockname": "Gulshan block 6 PECHS",
+"lat": "24.920733",
+"lng": "67.088162",
+"landmark": "",
+"mobile": "03451234567",
+"consigneecnic": ""
+},
+"vendorinfo": {
+"name": "Test Vendor",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"shipmentinfo": {
+"costcentercode": "Test-01",
+"referenceno": "123456789",
+"contentdesc": "Cost center description",
+"servicecode": "O",
+"parametertype": "Parameter Type",
+"shipmentdate": "28/08/2023 01:04:02",
+"shippingtype": "",
+"currency": "PKR",
+"codamount": 250,
+"declaredvalue": null,
+"insuredvalue": null,
+"transactiontype": "",
+"dsflag": "",
+"carrierslug": "",
+"weightinkg": 0.5,
+"pieces": 1,
+"fragile": false,
+"remarks": "Test remarks",
+"skus": [
+{
+"description": "SKU description",
+"quantity": 1,
+"weight": 0.5,
+"uom": "KG",
+"unitprice": 250,
+"declaredvalue": 0,
+"insuredvalue": 0,
+"hscode": "Test123"
+}
+],
+"piecedetail": [
+{
+"length": 10,
+"width": 10,
+"height": 10
+}
+]
+}
+}
+},
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/BookingRequest"
+},
+"example": {
+"accesstoken": "",
+"consignmentno": "",
+"shipperinfo": {
+"tcsaccount": "04011K1",
+"shippername": "Test",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"consigneeinfo": {
+"consigneecode": "C103",
+"firstname": "First name",
+"middlename": "Middle name",
+"lastname": "Last name",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"email": "test@test.com",
+"areacode": "KHI00001",
+"areaname": "Gulshan",
+"blockcode": "",
+"blockname": "Gulshan block 6 PECHS",
+"lat": "24.920733",
+"lng": "67.088162",
+"landmark": "",
+"mobile": "03451234567",
+"consigneecnic": ""
+},
+"vendorinfo": {
+"name": "Test Vendor",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"shipmentinfo": {
+"costcentercode": "Test-01",
+"referenceno": "123456789",
+"contentdesc": "Cost center description",
+"servicecode": "O",
+"parametertype": "Parameter Type",
+"shipmentdate": "28/08/2023 01:04:02",
+"shippingtype": "",
+"currency": "PKR",
+"codamount": 250,
+"declaredvalue": null,
+"insuredvalue": null,
+"transactiontype": "",
+"dsflag": "",
+"carrierslug": "",
+"weightinkg": 0.5,
+"pieces": 1,
+"fragile": false,
+"remarks": "Test remarks",
+"skus": [
+{
+"description": "SKU description",
+"quantity": 1,
+"weight": 0.5,
+"uom": "KG",
+"unitprice": 250,
+"declaredvalue": 0,
+"insuredvalue": 0,
+"hscode": "Test123"
+}
+],
+"piecedetail": [
+{
+"length": 10,
+"width": 10,
+"height": 10
+}
+]
+}
+}
+},
+"text/json": {
+"schema": {
+"$ref": "#/components/schemas/BookingRequest"
+},
+"example": {
+"accesstoken": "",
+"consignmentno": "",
+"shipperinfo": {
+"tcsaccount": "04011K1",
+"shippername": "Test",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"consigneeinfo": {
+"consigneecode": "C103",
+"firstname": "First name",
+"middlename": "Middle name",
+"lastname": "Last name",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"email": "test@test.com",
+"areacode": "KHI00001",
+"areaname": "Gulshan",
+"blockcode": "",
+"blockname": "Gulshan block 6 PECHS",
+"lat": "24.920733",
+"lng": "67.088162",
+"landmark": "",
+"mobile": "03451234567",
+"consigneecnic": ""
+},
+"vendorinfo": {
+"name": "Test Vendor",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"shipmentinfo": {
+"costcentercode": "Test-01",
+"referenceno": "123456789",
+"contentdesc": "Cost center description",
+"servicecode": "O",
+"parametertype": "Parameter Type",
+"shipmentdate": "28/08/2023 01:04:02",
+"shippingtype": "",
+"currency": "PKR",
+"codamount": 250,
+"declaredvalue": null,
+"insuredvalue": null,
+"transactiontype": "",
+"dsflag": "",
+"carrierslug": "",
+"weightinkg": 0.5,
+"pieces": 1,
+"fragile": false,
+"remarks": "Test remarks",
+"skus": [
+{
+"description": "SKU description",
+"quantity": 1,
+"weight": 0.5,
+"uom": "KG",
+"unitprice": 250,
+"declaredvalue": 0,
+"insuredvalue": 0,
+"hscode": "Test123"
+}
+],
+"piecedetail": [
+{
+"length": 10,
+"width": 10,
+"height": 10
+}
+]
+}
+}
+},
+"application/*+json": {
+"schema": {
+"$ref": "#/components/schemas/BookingRequest"
+},
+"example": {
+"accesstoken": "",
+"consignmentno": "",
+"shipperinfo": {
+"tcsaccount": "04011K1",
+"shippername": "Test",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"consigneeinfo": {
+"consigneecode": "C103",
+"firstname": "First name",
+"middlename": "Middle name",
+"lastname": "Last name",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"zip": "75800",
+"countrycode": "PK",
+"countryname": "Pakistan",
+"citycode": "KHI",
+"cityname": "Karachi",
+"email": "test@test.com",
+"areacode": "KHI00001",
+"areaname": "Gulshan",
+"blockcode": "",
+"blockname": "Gulshan block 6 PECHS",
+"lat": "24.920733",
+"lng": "67.088162",
+"landmark": "",
+"mobile": "03451234567",
+"consigneecnic": ""
+},
+"vendorinfo": {
+"name": "Test Vendor",
+"address1": "Test address 1",
+"address2": "Test address 2",
+"address3": "Test address 3",
+"citycode": "KHI",
+"cityname": "Karachi",
+"mobile": "03451234567"
+},
+"shipmentinfo": {
+"costcentercode": "Test-01",
+"referenceno": "123456789",
+"contentdesc": "Cost center description",
+"servicecode": "O",
+"parametertype": "Parameter Type",
+"shipmentdate": "28/08/2023 01:04:02",
+"shippingtype": "",
+"currency": "PKR",
+"codamount": 250,
+"declaredvalue": null,
+"insuredvalue": null,
+"transactiontype": "",
+"dsflag": "",
+"carrierslug": "",
+"weightinkg": 0.5,
+"pieces": 1,
+"fragile": false,
+"remarks": "Test remarks",
+"skus": [
+{
+"description": "SKU description",
+"quantity": 1,
+"weight": 0.5,
+"uom": "KG",
+"unitprice": 250,
+"declaredvalue": 0,
+"insuredvalue": 0,
+"hscode": "Test123"
+}
+],
+"piecedetail": [
+{
+"length": 10,
+"width": 10,
+"height": 10
+}
+]
+}
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/booking/createcostcentercode": {
+"post": {
+"tags": [
+"Booking"
+],
+"summary": "User can create multiple (cost center / location profile) for booking islabelprint value must be Yes / No",
+"requestBody": {
+"description": "",
+"content": {
+"application/json-patch+json": {
+"schema": {
+"$ref": "#/components/schemas/createCostCenterCodeReq"
+},
+"example": {
+"costcentercityname": "KARACHI",
+"costcentercode": "Test26",
+"costcentername": "Kathryn Poole1",
+"pickupaddress": "KHI Airport",
+"returnaddress": "KHI Airport",
+"islabelprint": "yes",
+"accountnumber": "04011K1",
+"phonenumber": "32122457457",
+"email": "test@abc.com",
+"accesstoken": ""
+}
+},
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/createCostCenterCodeReq"
+},
+"example": {
+"costcentercityname": "KARACHI",
+"costcentercode": "Test26",
+"costcentername": "Kathryn Poole1",
+"pickupaddress": "KHI Airport",
+"returnaddress": "KHI Airport",
+"islabelprint": "yes",
+"accountnumber": "04011K1",
+"phonenumber": "32122457457",
+"email": "test@abc.com",
+"accesstoken": ""
+}
+},
+"text/json": {
+"schema": {
+"$ref": "#/components/schemas/createCostCenterCodeReq"
+},
+"example": {
+"costcentercityname": "KARACHI",
+"costcentercode": "Test26",
+"costcentername": "Kathryn Poole1",
+"pickupaddress": "KHI Airport",
+"returnaddress": "KHI Airport",
+"islabelprint": "yes",
+"accountnumber": "04011K1",
+"phonenumber": "32122457457",
+"email": "test@abc.com",
+"accesstoken": ""
+}
+},
+"application/*+json": {
+"schema": {
+"$ref": "#/components/schemas/createCostCenterCodeReq"
+},
+"example": {
+"costcentercityname": "KARACHI",
+"costcentercode": "Test26",
+"costcentername": "Kathryn Poole1",
+"pickupaddress": "KHI Airport",
+"returnaddress": "KHI Airport",
+"islabelprint": "yes",
+"accountnumber": "04011K1",
+"phonenumber": "32122457457",
+"email": "test@abc.com",
+"accesstoken": ""
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/booking/cancel": {
+"post": {
+"tags": [
+"Booking"
+],
+"summary": "To cancel booking",
+"requestBody": {
+"description": "",
+"content": {
+"application/json-patch+json": {
+"schema": {
+"$ref": "#/components/schemas/CancelOrderVm"
+},
+"example": {
+"consignmentnumber": "123456",
+"accesstoken": ""
+}
+},
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/CancelOrderVm"
+},
+"example": {
+"consignmentnumber": "123456",
+"accesstoken": ""
+}
+},
+"text/json": {
+"schema": {
+"$ref": "#/components/schemas/CancelOrderVm"
+},
+"example": {
+"consignmentnumber": "123456",
+"accesstoken": ""
+}
+},
+"application/*+json": {
+"schema": {
+"$ref": "#/components/schemas/CancelOrderVm"
+},
+"example": {
+"consignmentnumber": "123456",
+"accesstoken": ""
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/booking/paymentinvoice": {
+"get": {
+"tags": [
+"Booking"
+],
+"summary": "To view payment invoice",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"description": "",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "invoicenumber",
+"in": "query",
+"description": "",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/booking/reverse": {
+"post": {
+"tags": [
+"Booking"
+],
+"summary": "To reverse a booking",
+"requestBody": {
+"content": {
+"application/json-patch+json": {
+"schema": {
+"$ref": "#/components/schemas/BookingReversal"
+},
+"example": {
+"costcentercode": "test",
+"consignmentno": "99555303992",
+"consigneemobno": "03155456456",
+"accesstoken": ""
+}
+},
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/BookingReversal"
+},
+"example": {
+"costcentercode": "test",
+"consignmentno": "99555303992",
+"consigneemobno": "03155456456",
+"accesstoken": ""
+}
+},
+"text/json": {
+"schema": {
+"$ref": "#/components/schemas/BookingReversal"
+},
+"example": {
+"costcentercode": "test",
+"consignmentno": "99555303992",
+"consigneemobno": "03155456456",
+"accesstoken": ""
+}
+},
+"application/*+json": {
+"schema": {
+"$ref": "#/components/schemas/BookingReversal"
+},
+"example": {
+"costcentercode": "test",
+"consignmentno": "99555303992",
+"consigneemobno": "03155456456",
+"accesstoken": ""
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/print/label": {
+"get": {
+"tags": [
+"CNPrint"
+],
+"summary": "Generate consignment label and returns in PDF format",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"description": "",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "consignmentno",
+"in": "query",
+"description": "",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "shipperDetails",
+"in": "query",
+"schema": {
+"type": "boolean",
+"default": false
+}
+},
+{
+"name": "printtype",
+"in": "query",
+"description": "1=>3 copies per page, 2=>Single copy per page, 3=> 6x4 label, 4=> 3 labels per page, 5=> Shipper's Copy, 6=> Shipment Label, 7=> Shipment Label 6x4",
+"schema": {
+"type": "integer",
+"format": "int32",
+"default": 1
+}
+},
+{
+"name": "accounttype",
+"in": "query",
+"description": "1=>Forward Account,2=>Reverse Account",
+"schema": {
+"maximum": 2,
+"minimum": 1,
+"type": "integer",
+"format": "int32",
+"default": 1
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/inquiry/cnbulkinquiry": {
+"get": {
+"tags": [
+"Inquiry"
+],
+"summary": "To view payment details against multiple consignment numbers within a certain date range",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "customerno",
+"in": "query",
+"description": "222",
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "fromdate",
+"in": "query",
+"description": "yyyy-mm-dd",
+"schema": {
+"type": "string",
+"format": "date-time"
+}
+},
+{
+"name": "todate",
+"in": "query",
+"description": "yyyy-mm-dd",
+"schema": {
+"type": "string",
+"format": "date-time"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/inquiry/intlrate": {
+"get": {
+"tags": [
+"Inquiry"
+],
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "customerAccountNo",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "product",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "destinationCountryCode",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "service",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "noOfPieces",
+"in": "query",
+"required": true,
+"schema": {
+"type": "integer",
+"format": "int32"
+}
+},
+{
+"name": "weight",
+"in": "query",
+"required": true,
+"schema": {
+"type": "number",
+"format": "double"
+}
+},
+{
+"name": "length",
+"in": "query",
+"schema": {
+"type": "number",
+"format": "double"
+}
+},
+{
+"name": "width",
+"in": "query",
+"schema": {
+"type": "number",
+"format": "double"
+}
+},
+{
+"name": "height",
+"in": "query",
+"schema": {
+"type": "number",
+"format": "double"
+}
+},
+{
+"name": "postalCode",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/inquiry/costcenterinquiry": {
+"get": {
+"tags": [
+"Inquiry"
+],
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "customerno",
+"in": "query",
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/Payment/status": {
+"get": {
+"tags": [
+"Payment"
+],
+"summary": "To check payment date against consignment number along with corresponding payment status and booking details",
+"parameters": [
+{
+"name": "customerno",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "cnno",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/Payment/detail": {
+"get": {
+"tags": [
+"Payment"
+],
+"summary": "To view payment details against multiple consignment numbers within a certain date range",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "customerno",
+"in": "query",
+"description": "222",
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "fromdate",
+"in": "query",
+"description": "yyyy-mm-dd",
+"schema": {
+"type": "string",
+"format": "date-time"
+}
+},
+{
+"name": "todate",
+"in": "query",
+"description": "yyyy-mm-dd",
+"schema": {
+"type": "string",
+"format": "date-time"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/report/loadsheetlogs": {
+"get": {
+"tags": [
+"Report"
+],
+"summary": "To view load sheet logs within a certain date range",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "customerno",
+"in": "query",
+"description": "222k1",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "fromdate",
+"in": "query",
+"description": "yyyy-mm-dd",
+"required": true,
+"schema": {
+"type": "string",
+"format": "date-time"
+}
+},
+{
+"name": "todate",
+"in": "query",
+"description": "yyyy-mm-dd",
+"required": true,
+"schema": {
+"type": "string",
+"format": "date-time"
+}
+},
+{
+"name": "costcenterno",
+"in": "query",
+"description": "222hh",
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/report/consigneesuccessratio": {
+"get": {
+"tags": [
+"Report"
+],
+"summary": "To view success ratio of three months",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "phonenumbers",
+"in": "query",
+"description": "03213321653",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/setup/areacode": {
+"get": {
+"tags": [
+"Setup"
+],
+"summary": "To fetch area code by area description",
+"parameters": [
+{
+"name": "citycode",
+"in": "query",
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "area",
+"in": "query",
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/setup/blockcode": {
+"get": {
+"tags": [
+"Setup"
+],
+"summary": "To fetch block code by block description",
+"parameters": [
+{
+"name": "area",
+"in": "query",
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "blockcode",
+"in": "query",
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/setup/countrylist": {
+"get": {
+"tags": [
+"Setup"
+],
+"summary": "To get country list",
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/setup/citylistbycountry": {
+"get": {
+"tags": [
+"Setup"
+],
+"summary": "To fetch cities by country code",
+"parameters": [
+{
+"name": "countrycode",
+"in": "query",
+"description": "",
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/setup/routelist": {
+"get": {
+"tags": [
+"Setup"
+],
+"summary": "To fetch route code",
+"parameters": [
+{
+"name": "countrycode",
+"in": "query",
+"description": "",
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/setup/deliverystatuslist": {
+"get": {
+"tags": [
+"Setup"
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/shipperadvice/getactions": {
+"get": {
+"tags": [
+"ShipperAdvice"
+],
+"summary": "To View All Actions",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/shipperadvice/getactiondetailsbyactionid": {
+"get": {
+"tags": [
+"ShipperAdvice"
+],
+"summary": "To View All Action Details Based On Selected Action",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "actionId",
+"in": "query",
+"schema": {
+"type": "integer",
+"format": "int32"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/shipperadvice/pendingtickets": {
+"get": {
+"tags": [
+"ShipperAdvice"
+],
+"summary": "To View All Action Details Based On Selected Action",
+"parameters": [
+{
+"name": "accesstoken",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+},
+{
+"name": "customerno",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+},
+"/api/shipperadvice/update": {
+"post": {
+"tags": [
+"ShipperAdvice"
+],
+"requestBody": {
+"content": {
+"application/json-patch+json": {
+"schema": {
+"$ref": "#/components/schemas/ShipperAdviceRequestModel"
+}
+},
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/ShipperAdviceRequestModel"
+}
+},
+"text/json": {
+"schema": {
+"$ref": "#/components/schemas/ShipperAdviceRequestModel"
+}
+},
+"application/*+json": {
+"schema": {
+"$ref": "#/components/schemas/ShipperAdviceRequestModel"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Success"
+}
+}
+}
+}
+},
+"components": {
+"schemas": {
+"BookingRequest": {
+"required": [
+"consigneeinfo",
+"shipmentinfo",
+"shipperinfo"
+],
+"type": "object",
+"properties": {
+"consignmentno": {
+"type": "string",
+"description": "Consignment number should be 12 digits or null.",
+"nullable": true
+},
+"shipperinfo": {
+"$ref": "#/components/schemas/Shipperinfo"
+},
+"consigneeinfo": {
+"$ref": "#/components/schemas/Consigneeinfo"
+},
+"vendorinfo": {
+"$ref": "#/components/schemas/Vendorinfo"
+},
+"shipmentinfo": {
+"$ref": "#/components/schemas/Shipmentinfo"
+},
+"accesstoken": {
+"type": "string",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"BookingReversal": {
+"required": [
+"accesstoken",
+"consignmentno"
+],
+"type": "object",
+"properties": {
+"accesstoken": {
+"type": "string"
+},
+"costcentercode": {
+"type": "string",
+"nullable": true
+},
+"consignmentno": {
+"type": "string"
+},
+"consigneemobno": {
+"type": "string",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"CancelOrderVm": {
+"required": [
+"accesstoken",
+"consignmentnumber"
+],
+"type": "object",
+"properties": {
+"accesstoken": {
+"type": "string"
+},
+"consignmentnumber": {
+"type": "string"
+}
+},
+"additionalProperties": false
+},
+"Consigneeinfo": {
+"required": [
+"address1",
+"firstname",
+"mobile"
+],
+"type": "object",
+"properties": {
+"consigneecode": {
+"maxLength": 10,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"firstname": {
+"maxLength": 50,
+"minLength": 3,
+"type": "string"
+},
+"middlename": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"lastname": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"address1": {
+"maxLength": 120,
+"minLength": 3,
+"type": "string"
+},
+"address2": {
+"maxLength": 120,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"address3": {
+"maxLength": 120,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"zip": {
+"maxLength": 6,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"countrycode": {
+"maxLength": 2,
+"minLength": 2,
+"type": "string",
+"nullable": true
+},
+"countryname": {
+"maxLength": 50,
+"minLength": 3,
+"type": "string",
+"nullable": true
+},
+"citycode": {
+"type": "string",
+"nullable": true
+},
+"cityname": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"email": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"areacode": {
+"type": "string",
+"nullable": true
+},
+"areaname": {
+"type": "string",
+"nullable": true
+},
+"blockcode": {
+"type": "string",
+"nullable": true
+},
+"blockname": {
+"type": "string",
+"nullable": true
+},
+"lat": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"lng": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"landmark": {
+"maxLength": 200,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"mobile": {
+"maxLength": 14,
+"minLength": 11,
+"type": "string",
+"description": "Mobile number format should be 0345xxxxxxx"
+},
+"consigneecnic": {
+"maxLength": 13,
+"minLength": 0,
+"type": "string",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"createCostCenterCodeReq": {
+"required": [
+"accesstoken",
+"accountnumber",
+"costcentercityname",
+"costcentercode",
+"costcentername",
+"islabelprint",
+"pickupaddress",
+"returnaddress"
+],
+"type": "object",
+"properties": {
+"accesstoken": {
+"type": "string"
+},
+"costcentercityname": {
+"type": "string"
+},
+"costcentercode": {
+"type": "string"
+},
+"costcentername": {
+"type": "string"
+},
+"pickupaddress": {
+"type": "string"
+},
+"returnaddress": {
+"type": "string"
+},
+"islabelprint": {
+"type": "string"
+},
+"accountnumber": {
+"type": "string"
+},
+"phonenumber": {
+"type": "string",
+"nullable": true
+},
+"email": {
+"type": "string",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"PieceInfo": {
+"type": "object",
+"properties": {
+"length": {
+"type": "number",
+"description": "The length value.",
+"format": "double",
+"example": 10.5
+},
+"width": {
+"type": "number",
+"description": "The width value.",
+"format": "double",
+"example": 10.5
+},
+"height": {
+"type": "number",
+"description": "The height value.",
+"format": "double",
+"example": 10.5
+}
+},
+"additionalProperties": false
+},
+"Shipmentinfo": {
+"required": [
+"codamount",
+"fragile",
+"pieces",
+"servicecode",
+"weightinkg"
+],
+"type": "object",
+"properties": {
+"costcentercode": {
+"maxLength": 20,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"referenceno": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"contentdesc": {
+"maxLength": 999,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"servicecode": {
+"maxLength": 6,
+"minLength": 1,
+"type": "string"
+},
+"parametertype": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"shipmentdate": {
+"maxLength": 20,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"shippingtype": {
+"maxLength": 10,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"currency": {
+"maxLength": 5,
+"minLength": 3,
+"type": "string",
+"nullable": true
+},
+"codamount": {
+"maximum": 250000,
+"minimum": 0,
+"type": "integer",
+"format": "int32"
+},
+"declaredvalue": {
+"maximum": 250000,
+"minimum": 0,
+"type": "integer",
+"format": "int32",
+"nullable": true
+},
+"insuredvalue": {
+"maximum": 250000,
+"minimum": 0,
+"type": "integer",
+"format": "int32",
+"nullable": true
+},
+"transactiontype": {
+"type": "string",
+"description": "Transactiontype maximum length 10.",
+"nullable": true
+},
+"dsflag": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"carrierslug": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"weightinkg": {
+"type": "number",
+"description": "Weight is in KG",
+"format": "double"
+},
+"pieces": {
+"maximum": 2147483647,
+"minimum": 1,
+"type": "integer",
+"format": "int32"
+},
+"fragile": {
+"type": "boolean",
+"description": "Value should be true or false"
+},
+"remarks": {
+"maxLength": 500,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"skus": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/Sku"
+},
+"nullable": true
+},
+"piecedetail": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/PieceInfo"
+},
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"ShipperAdviceModel": {
+"required": [
+"actiondetailid",
+"actionid",
+"consignmentno"
+],
+"type": "object",
+"properties": {
+"consignmentno": {
+"type": "string"
+},
+"ticketno": {
+"type": "integer",
+"description": "Ticket number. Pass {null} as the default value instead of 0.",
+"format": "int32",
+"default": null,
+"nullable": true
+},
+"actionid": {
+"type": "integer",
+"format": "int32"
+},
+"actiondetailid": {
+"type": "integer",
+"format": "int32"
+},
+"deliveryaddress": {
+"type": "string",
+"nullable": true
+},
+"revisedphoneno": {
+"type": "string",
+"nullable": true
+},
+"remarks": {
+"type": "string",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"ShipperAdviceRequestModel": {
+"required": [
+"accesstoken",
+"customerno"
+],
+"type": "object",
+"properties": {
+"accesstoken": {
+"type": "string"
+},
+"customerno": {
+"type": "string"
+},
+"shipperadvice": {
+"$ref": "#/components/schemas/ShipperAdviceModel"
+}
+},
+"additionalProperties": false
+},
+"Shipperinfo": {
+"required": [
+"address1",
+"cityname",
+"countrycode",
+"countryname",
+"mobile",
+"shippername",
+"tcsaccount"
+],
+"type": "object",
+"properties": {
+"tcsaccount": {
+"maxLength": 12,
+"minLength": 3,
+"type": "string"
+},
+"shippername": {
+"maxLength": 50,
+"minLength": 3,
+"type": "string"
+},
+"address1": {
+"maxLength": 120,
+"minLength": 3,
+"type": "string"
+},
+"address2": {
+"maxLength": 120,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"address3": {
+"maxLength": 120,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"zip": {
+"maxLength": 6,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"countrycode": {
+"maxLength": 2,
+"minLength": 2,
+"type": "string"
+},
+"countryname": {
+"maxLength": 50,
+"minLength": 3,
+"type": "string"
+},
+"citycode": {
+"maxLength": 5,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"cityname": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string"
+},
+"mobile": {
+"type": "string",
+"description": "Mobile number format should be 0345xxxxxxx"
+}
+},
+"additionalProperties": false
+},
+"Sku": {
+"required": [
+"quantity",
+"unitprice",
+"weight"
+],
+"type": "object",
+"properties": {
+"description": {
+"maxLength": 200,
+"minLength": 3,
+"type": "string",
+"nullable": true
+},
+"quantity": {
+"type": "integer",
+"description": "quatity should be greate than equal to 1",
+"format": "int32"
+},
+"weight": {
+"type": "number",
+"format": "double"
+},
+"uom": {
+"type": "string",
+"nullable": true
+},
+"unitprice": {
+"maximum": 250000,
+"minimum": 0,
+"type": "integer",
+"format": "int32"
+},
+"declaredvalue": {
+"maximum": 250000,
+"minimum": 0,
+"type": "integer",
+"format": "int32",
+"nullable": true
+},
+"insuredvalue": {
+"maximum": 250000,
+"minimum": 0,
+"type": "integer",
+"format": "int32",
+"nullable": true
+},
+"hscode": {
+"type": "string",
+"description": "HS Code of the product. Example: 'Test123'",
+"nullable": true
+}
+},
+"additionalProperties": false
+},
+"Vendorinfo": {
+"type": "object",
+"properties": {
+"name": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"address1": {
+"maxLength": 120,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"address2": {
+"maxLength": 120,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"address3": {
+"maxLength": 120,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"citycode": {
+"maxLength": 5,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"cityname": {
+"maxLength": 50,
+"minLength": 0,
+"type": "string",
+"nullable": true
+},
+"mobile": {
+"type": "string",
+"description": "Mobile number format should be 0345xxxxxxx",
+"nullable": true
+}
+},
+"additionalProperties": false
+}
+},
+"securitySchemes": {
+"Bearer": {
+"type": "http",
+"description": "Please enter a valid token",
+"scheme": "Bearer",
+"bearerFormat": "JWT"
+}
+}
+},
+"security": [
+{
+"Bearer": []
+}
+]
+}
