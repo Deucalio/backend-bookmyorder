@@ -27,14 +27,18 @@ const CRON_RUN_CAP = 5; // permanentlyFailed after this many cron runs
 const TERMINAL_LIST = Array.from(TERMINAL_STATUSES);
 
 /**
- * Eligible fulfillments = has trackingNumber + supported courier + not in a
- * terminal tracking state + not locally cancelled. Initial-backfill orders
- * naturally drop out because they don't have our tracking numbers attached.
+ * Eligible fulfillments = has trackingNumber + recognized courier (via
+ * findCourier — catches historical rows where courierCode wasn't yet
+ * normalized to the internal id) + not in a terminal tracking state + not
+ * locally cancelled. Initial-backfill orders naturally drop out because
+ * they don't have our tracking numbers attached.
  */
 async function loadEligibleFulfillments({ fulfillmentIds } = {}) {
   const where = {
     trackingNumber: { not: null },
-    courierCode: { in: ['leopards', 'tcs'] },
+    // Intentionally no courierCode filter at the DB level — historical rows
+    // may have inconsistent values (e.g. "LCS", "leopards_courier") that
+    // findCourier can still resolve. We filter in JS below.
     status: { notIn: ['cancelled', 'failed'] },
     OR: [
       { lastTrackingStatus: null },
@@ -48,10 +52,13 @@ async function loadEligibleFulfillments({ fulfillmentIds } = {}) {
     delete where.OR;
     delete where.status;
   }
-  return prisma.fulfillment.findMany({
+  const candidates = await prisma.fulfillment.findMany({
     where,
     select: { id: true, courierCode: true, trackingNumber: true },
   });
+  // Drop rows whose courierCode doesn't match any supported courier (manual,
+  // unknown 3PL, etc.) — the tracking API would 400 on them.
+  return candidates.filter((f) => findCourier(f.courierCode) != null);
 }
 
 /** Drain TrackingRetryQueue: returns fulfillments from non-permanent rows. */
@@ -67,7 +74,7 @@ async function loadRetryQueueFulfillments() {
   });
   return rows
     .map((r) => r.fulfillment)
-    .filter((f) => f && f.trackingNumber && ['leopards', 'tcs'].includes(f.courierCode));
+    .filter((f) => f && f.trackingNumber && findCourier(f.courierCode) != null);
 }
 
 function chunk(arr, size) {

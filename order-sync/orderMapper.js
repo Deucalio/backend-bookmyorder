@@ -3,6 +3,7 @@ const { matchLocation } = require('../utils/location-matcher');
 const { matchArea } = require('../utils/area-matcher');
 const { logMatchAttempt } = require('../utils/address-match-log');
 const { waitForCredits } = require('../fulfillment-kit/utils/shopify.throttle');
+const { findCourier } = require('../utils/courierCompanies');
 
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || '2025-10';
 
@@ -236,7 +237,11 @@ async function syncFulfillmentsForOrders(orders, orderIdMap) {
       const shopifyFulfillmentId = fulfillment.id.split('/').pop();
       const tracking = fulfillment.trackingInfo?.[0] ?? {};
       const courierName = tracking.company || 'manual';
-      const courierCode = courierName.toLowerCase().replace(/\s+/g, '_');
+      // Normalize to our internal id (e.g. "Leopards Courier" → "leopards")
+      // so the DB stores a consistent value. Falls back to a slugged name
+      // only when the company isn't one of our supported couriers.
+      const matched = findCourier(courierName);
+      const courierCode = matched ? matched.id : courierName.toLowerCase().replace(/\s+/g, '_');
 
       const sharedData = {
         shopifyFulfillmentId,

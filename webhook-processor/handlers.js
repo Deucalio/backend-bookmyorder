@@ -4,6 +4,7 @@ const { matchArea } = require('../utils/area-matcher');
 const { logMatchAttempt } = require('../utils/address-match-log');
 const { shopifyRestGet } = require('../utils/shopify-api');
 const { consumeCreditForNewOrder, recordStoppedOrder } = require('../utils/credits');
+const { findCourier } = require('../utils/courierCompanies');
 
 // REST order webhooks send fulfillment_status as null/'fulfilled'/'partial'/
 // 'restocked'. The DB column stores the GraphQL displayFulfillmentStatus enum,
@@ -298,7 +299,10 @@ async function upsertFulfillmentFromWebhook(shopId, fulfillment) {
       : null;
 
   const courierName = fulfillment.tracking_company || 'manual';
-  const courierCode = courierName.toLowerCase().replace(/\s+/g, '_');
+  // Normalize to our internal id (e.g. "Leopards Courier" → "leopards") via
+  // findCourier so the DB stays consistent with bookOrders.server.ts writes.
+  const matched = findCourier(courierName);
+  const courierCode = matched ? matched.id : courierName.toLowerCase().replace(/\s+/g, '_');
 
   const existing = await prisma.fulfillment.findFirst({
     where: { orderId: order.id, shopifyFulfillmentId },

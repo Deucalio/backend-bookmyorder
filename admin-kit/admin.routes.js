@@ -106,42 +106,67 @@ router.post('/wipe-shop', requireInternalSecret, async (req, res) => {
 
 // POST /api/admin/sync-tracking
 // Manual trigger for the daily tracking-sync cron.
-//   - No body                → full run (queue drain + eligible).
-//   - { fulfillmentIds: [..] } → re-sync those Fulfillment.id cuids
-//                                (bypasses the terminal-status filter).
-//   - { orderIds: [..] }     → resolve to fulfillments via Order.shopifyOrderId
-//                                (BigInt). Convenience for testing from Postman
-//                                using the Shopify order ID you can see in the
-//                                admin URL. Also bypasses terminal filter.
+//   - No body                       → full run (queue drain + eligible).
+//   - { fulfillmentIds: [..] }      → re-sync by internal Fulfillment.id cuids.
+//   - { orderIds: [..] }            → resolve via Order.shopifyOrderId (the
+//                                     numeric ID you see in the Shopify admin URL).
+//   - { shopifyFulfillmentIds: [..] } → resolve via Fulfillment.shopifyFulfillmentId
+//                                       (the numeric ID stored on each Fulfillment row).
+// All ID-bearing bodies bypass the terminal-status filter so you can force-
+// refresh already-DELIVERED rows.
 router.post('/sync-tracking', requireInternalSecret, async (req, res) => {
   try {
-    const { fulfillmentIds, orderIds } = req.body || {};
-    if (fulfillmentIds && (!Array.isArray(fulfillmentIds) || fulfillmentIds.some((id) => typeof id !== 'string'))) {
+    const { fulfillmentIds, orderIds, shopifyFulfillmentIds } = req.body || {};
+
+    const isStringArr = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+    const isStringOrNumArr = (v) =>
+      Array.isArray(v) && v.every((x) => typeof x === 'string' || typeof x === 'number');
+
+    if (fulfillmentIds && !isStringArr(fulfillmentIds)) {
       return res.status(400).json({ success: false, error: 'fulfillmentIds must be an array of strings' });
     }
-    if (orderIds && (!Array.isArray(orderIds) || orderIds.some((id) => typeof id !== 'string' && typeof id !== 'number'))) {
+    if (orderIds && !isStringOrNumArr(orderIds)) {
       return res.status(400).json({ success: false, error: 'orderIds must be an array of strings/numbers (Shopify order IDs)' });
     }
+    if (shopifyFulfillmentIds && !isStringOrNumArr(shopifyFulfillmentIds)) {
+      return res.status(400).json({ success: false, error: 'shopifyFulfillmentIds must be an array of strings/numbers' });
+    }
 
-    let resolvedFulfillmentIds = fulfillmentIds;
+    const collected = new Set(fulfillmentIds || []);
+
     if (orderIds?.length) {
-      const fulfillments = await prisma.fulfillment.findMany({
+      const rows = await prisma.fulfillment.findMany({
         where: {
           order: { shopifyOrderId: { in: orderIds.map((id) => BigInt(id)) } },
           trackingNumber: { not: null },
         },
         select: { id: true },
       });
-      resolvedFulfillmentIds = [...(fulfillmentIds || []), ...fulfillments.map((f) => f.id)];
-      if (resolvedFulfillmentIds.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'No fulfillments with tracking numbers found for the supplied orderIds',
-        });
-      }
+      rows.forEach((r) => collected.add(r.id));
     }
 
-    const summary = await runTrackingSync({ fulfillmentIds: resolvedFulfillmentIds });
+    if (shopifyFulfillmentIds?.length) {
+      const rows = await prisma.fulfillment.findMany({
+        where: {
+          shopifyFulfillmentId: { in: shopifyFulfillmentIds.map(String) },
+          trackingNumber: { not: null },
+        },
+        select: { id: true },
+      });
+      rows.forEach((r) => collected.add(r.id));
+    }
+
+    const hasIdInput = !!(fulfillmentIds?.length || orderIds?.length || shopifyFulfillmentIds?.length);
+    if (hasIdInput && collected.size === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No fulfillments with tracking numbers found for the supplied IDs',
+      });
+    }
+
+    const summary = await runTrackingSync({
+      fulfillmentIds: hasIdInput ? Array.from(collected) : undefined,
+    });
     return res.status(200).json({ success: true, summary });
   } catch (error) {
     console.error('[admin/sync-tracking] error:', error);
