@@ -105,17 +105,43 @@ router.post('/wipe-shop', requireInternalSecret, async (req, res) => {
 });
 
 // POST /api/admin/sync-tracking
-// Manual trigger for the daily tracking-sync cron. With no body it runs the
-// full job (queue drain + eligible). With { fulfillmentIds: [...] } it
-// re-syncs only those rows (bypasses the terminal-status filter so you can
-// force-refresh already-DELIVERED orders during testing).
+// Manual trigger for the daily tracking-sync cron.
+//   - No body                → full run (queue drain + eligible).
+//   - { fulfillmentIds: [..] } → re-sync those Fulfillment.id cuids
+//                                (bypasses the terminal-status filter).
+//   - { orderIds: [..] }     → resolve to fulfillments via Order.shopifyOrderId
+//                                (BigInt). Convenience for testing from Postman
+//                                using the Shopify order ID you can see in the
+//                                admin URL. Also bypasses terminal filter.
 router.post('/sync-tracking', requireInternalSecret, async (req, res) => {
   try {
-    const { fulfillmentIds } = req.body || {};
+    const { fulfillmentIds, orderIds } = req.body || {};
     if (fulfillmentIds && (!Array.isArray(fulfillmentIds) || fulfillmentIds.some((id) => typeof id !== 'string'))) {
       return res.status(400).json({ success: false, error: 'fulfillmentIds must be an array of strings' });
     }
-    const summary = await runTrackingSync({ fulfillmentIds });
+    if (orderIds && (!Array.isArray(orderIds) || orderIds.some((id) => typeof id !== 'string' && typeof id !== 'number'))) {
+      return res.status(400).json({ success: false, error: 'orderIds must be an array of strings/numbers (Shopify order IDs)' });
+    }
+
+    let resolvedFulfillmentIds = fulfillmentIds;
+    if (orderIds?.length) {
+      const fulfillments = await prisma.fulfillment.findMany({
+        where: {
+          order: { shopifyOrderId: { in: orderIds.map((id) => BigInt(id)) } },
+          trackingNumber: { not: null },
+        },
+        select: { id: true },
+      });
+      resolvedFulfillmentIds = [...(fulfillmentIds || []), ...fulfillments.map((f) => f.id)];
+      if (resolvedFulfillmentIds.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'No fulfillments with tracking numbers found for the supplied orderIds',
+        });
+      }
+    }
+
+    const summary = await runTrackingSync({ fulfillmentIds: resolvedFulfillmentIds });
     return res.status(200).json({ success: true, summary });
   } catch (error) {
     console.error('[admin/sync-tracking] error:', error);

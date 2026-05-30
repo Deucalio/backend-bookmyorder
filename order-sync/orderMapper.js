@@ -246,7 +246,11 @@ async function syncFulfillmentsForOrders(orders, orderIdMap) {
         trackingNumber: tracking.number || null,
         trackingUrl: tracking.url || null,
         status: mappedStatus,
-        deliveryOutcome: isFulfilled ? 'delivered' : 'pending',
+        // deliveryOutcome stays 'pending' on import — only the tracking-sync
+        // cron (sources: trackmyorder.pk DELIVERED/RETURNED/FAILED) is allowed
+        // to flip it. Shopify being marked fulfilled doesn't mean the parcel
+        // was delivered.
+        deliveryOutcome: 'pending',
         fulfilledOnShopifyAt: isFulfilled
           ? new Date(fulfillment.updatedAt ?? fulfillment.createdAt)
           : null,

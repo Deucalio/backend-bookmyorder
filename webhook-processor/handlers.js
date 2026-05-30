@@ -315,8 +315,10 @@ async function upsertFulfillmentFromWebhook(shopId, fulfillment) {
     status: mappedStatus,
     lastTrackingStatus: fulfillment.shipment_status || null,
     lastTrackingAt: fulfillment.shipment_status ? new Date() : null,
-    deliveryOutcome:
-      mappedStatus === 'fulfilled' ? 'delivered' : mappedStatus === 'failed' ? 'failed' : 'pending',
+    // deliveryOutcome stays 'pending' (or 'failed' when Shopify says so).
+    // Only the tracking-sync cron — backed by real courier data from
+    // trackmyorder.pk — is allowed to mark a parcel 'delivered'/'returned'.
+    deliveryOutcome: mappedStatus === 'failed' ? 'failed' : 'pending',
     fulfilledOnShopifyAt: fulfilledAt,
     items: fulfillment.line_items ?? [],
   };
