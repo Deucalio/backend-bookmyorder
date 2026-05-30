@@ -26,16 +26,21 @@ const router = express.Router();
 
 // ----------------------------------------------------------------------------
 // AUTH / PERMISSIONS
-// These are no-op placeholders so the kit runs out of the box. Replace them
-// with your project's real middleware, e.g.:
-//
-//   const { authenticateToken } = require('../middleware/auth');
-//   const requirePermission = require('../middleware/requirePermission');
-//
-// then swap the two consts below for those imports.
 // ----------------------------------------------------------------------------
 const authenticateToken = (req, res, next) => next();
 const requirePermission = () => (req, res, next) => next();
+
+function requireInternalSecret(req, res, next) {
+  const secret = process.env.INTERNAL_SECRET;
+  if (!secret) {
+    console.error('[courier] INTERNAL_SECRET not set — rejecting request');
+    return res.status(500).json({ success: false, error: 'Server misconfiguration' });
+  }
+  if (req.headers['x-internal-secret'] !== secret) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  next();
+}
 
 // ----------------------------------------------------------------------------
 // Shared helper: book one parcel and (if booking succeeded) mark it fulfilled
@@ -55,6 +60,10 @@ const requirePermission = () => (req, res, next) => next();
 // ----------------------------------------------------------------------------
 async function bookAndFulfillOne(payload) {
   const shopify = payload?.shopify || {};
+  const orderNum = payload?.order_info?.order_number ?? 'unknown';
+  const courier  = String(payload?.courier || '').toUpperCase();
+  const foId     = shopify.fulfillment_order_id;
+  const shop     = shopify.platform_store_id;
 
   if (!payload?.courier) throw new Error('courier is required');
   if (!shopify.platform_store_id || !shopify.access_token) {
@@ -64,13 +73,30 @@ async function bookAndFulfillOne(payload) {
     throw new Error('shopify.fulfillment_order_id is required');
   }
 
+  console.log(
+    `[book-and-fulfill] START | order: ${orderNum} | courier: ${courier} | ` +
+    `fo_id: ${foId} | shop: ${shop} | ` +
+    `cod: ${payload.order_info?.cod_amount} | weight: ${payload.order_info?.weight} | ` +
+    `service: ${payload.courier_data?.service_type ?? payload.courier_data?.service_code ?? 'n/a'} | ` +
+    `city: ${payload.customer_info?.city_name ?? payload.customer_info?.city ?? 'n/a'}`
+  );
+
   // 1. Book the parcel.
   const courierService = courierFactory.getService(payload.courier);
   const bookResult = await courierService.bookOrder(payload);
 
   if (!bookResult.success) {
+    console.error(
+      `[book-and-fulfill] COURIER FAILED | order: ${orderNum} | courier: ${courier} | ` +
+      `error: ${bookResult.error}`
+    );
     return { booking: bookResult, fulfillment: null, tag: null };
   }
+
+  console.log(
+    `[book-and-fulfill] COURIER OK | order: ${orderNum} | tracking: ${bookResult.tracking_number}` +
+    (bookResult.slip_link ? ` | slip: ${bookResult.slip_link}` : '')
+  );
 
   // 2. Booking succeeded — mark fulfilled on Shopify (non-fatal on failure).
   const storeCreds = {
@@ -84,11 +110,18 @@ async function bookAndFulfillOne(payload) {
     tracking_number:      bookResult.tracking_number,
     tracking_url:         bookResult.tracking_url,
     courier:              bookResult.courier_name,
-    notify_customer:      shopify.notify_customer !== false, // default true
+    notify_customer:      shopify.notify_customer !== false,
   });
 
   if (markResult.status !== 'success') {
-    console.error('[book-and-fulfill] markFulfillment failed but booking is preserved:', markResult.error);
+    console.error(
+      `[book-and-fulfill] SHOPIFY FULFILL FAILED | order: ${orderNum} | fo_id: ${foId} | ` +
+      `error: ${markResult.error}`
+    );
+  } else {
+    console.log(
+      `[book-and-fulfill] SHOPIFY FULFILL OK | order: ${orderNum} | fo_id: ${foId}`
+    );
   }
 
   // 3. Optional tag (only if mark succeeded and the caller asked for it).
@@ -104,9 +137,16 @@ async function bookAndFulfillOne(payload) {
       tags:              shopify.tags,
     });
     if (tagResult.status !== 'success') {
-      console.error('[book-and-fulfill] tagOrder failed:', tagResult.error);
+      console.error(`[book-and-fulfill] tagOrder FAILED | order: ${orderNum} | error: ${tagResult.error}`);
     }
   }
+
+  console.log(
+    `[book-and-fulfill] DONE | order: ${orderNum} | courier: ${courier} | ` +
+    `tracking: ${bookResult.tracking_number} | ` +
+    `shopify_fulfill: ${markResult.status === 'success' ? 'ok' : 'FAILED'} | ` +
+    `tagged: ${tagResult ? (tagResult.status === 'success' ? 'ok' : 'FAILED') : 'n/a'}`
+  );
 
   return { booking: bookResult, fulfillment: markResult, tag: tagResult };
 }
@@ -139,7 +179,7 @@ router.post('/book-standardized', authenticateToken, requirePermission('orders:b
  * Body: { payloads: [ StandardizedBookingPayload, ... ] }
  * Status: 200 all ok | 207 partial | 400 all failed
  */
-router.post('/batch-book-standardized', authenticateToken, requirePermission('orders:book'), async (req, res) => {
+router.post('/batch-book-standardized', requireInternalSecret, requirePermission('orders:book'), async (req, res) => {
   try {
     const { payloads } = req.body;
 
@@ -168,7 +208,7 @@ router.post('/batch-book-standardized', authenticateToken, requirePermission('or
  * Body: { payloads: [ { courier, tracking_number, credentials|courier_account_id, reason? }, ... ] }
  * Status: 200 all ok | 207 partial | 400 all failed
  */
-router.post('/batch-cancel', authenticateToken, requirePermission('orders:cancel'), async (req, res) => {
+router.post('/batch-cancel', requireInternalSecret, requirePermission('orders:cancel'), async (req, res) => {
   try {
     const { payloads } = req.body;
 
@@ -176,7 +216,14 @@ router.post('/batch-cancel', authenticateToken, requirePermission('orders:cancel
       return res.status(400).json({ success: false, message: 'Payloads array is required' });
     }
 
+    const trackingNums = payloads.map(p => p?.tracking_number ?? '?').join(', ');
+    console.log(`[batch-cancel] START | count: ${payloads.length} | tracking: ${trackingNums}`);
+
     const results = await batchBookingService.processBatchCancellation(payloads);
+
+    console.log(
+      `[batch-cancel] DONE | success: ${results.summary.success} | failed: ${results.summary.failed}`
+    );
 
     const allFailed = results.summary.success === 0;
     const hasFailures = results.summary.failed > 0;
@@ -187,7 +234,7 @@ router.post('/batch-cancel', authenticateToken, requirePermission('orders:cancel
     });
 
   } catch (error) {
-    console.error('Batch cancellation failed:', error);
+    console.error('[batch-cancel] unhandled error:', error);
     res.status(500).json({ success: false, message: 'Batch cancellation failed', error: error.message });
   }
 });
@@ -286,7 +333,7 @@ router.post('/verify-courier', authenticateToken, async (req, res) => {
  *
  * Body: { courier: "LCS"|"TCS"|"LEOPARDS", credentials: { ... } }
  */
-router.post('/test-credentials', authenticateToken, async (req, res) => {
+router.post('/test-credentials', requireInternalSecret, async (req, res) => {
   const { courier, credentials } = req.body;
 
   if (!courier || !credentials) {
@@ -429,13 +476,16 @@ router.post('/book-and-fulfill', authenticateToken, requirePermission('orders:bo
  *      //                                     but whose Shopify mark failed.
  *    }
  */
-router.post('/batch-book-and-fulfill', authenticateToken, requirePermission('orders:book'), async (req, res) => {
+router.post('/batch-book-and-fulfill', requireInternalSecret, requirePermission('orders:book'), async (req, res) => {
   try {
     const { payloads } = req.body || {};
 
     if (!Array.isArray(payloads) || payloads.length === 0) {
       return res.status(400).json({ success: false, message: 'payloads array is required' });
     }
+
+    const orderNums = payloads.map(p => p?.order_info?.order_number ?? '?').join(', ');
+    console.log(`[batch-book-and-fulfill] START | total: ${payloads.length} | orders: ${orderNums}`);
 
     const settled = await Promise.allSettled(payloads.map(p => bookAndFulfillOne(p)));
 
@@ -449,7 +499,6 @@ router.post('/batch-book-and-fulfill', authenticateToken, requirePermission('ord
       const payload = payloads[i];
       const order_number = payload?.order_info?.order_number;
 
-      // Validation throw or unexpected exception.
       if (res.status === 'rejected') {
         out.failed.push({ order_number, error: res.reason?.message || 'Unknown error' });
         out.summary.failed++;
@@ -458,7 +507,6 @@ router.post('/batch-book-and-fulfill', authenticateToken, requirePermission('ord
 
       const value = res.value;
 
-      // Courier rejected the booking — preserve the booking detail for debugging.
       if (!value.booking?.success) {
         out.failed.push({
           order_number,
@@ -469,8 +517,6 @@ router.post('/batch-book-and-fulfill', authenticateToken, requirePermission('ord
         return;
       }
 
-      // Booking succeeded. Mark may still have failed — that's non-fatal,
-      // but we surface it in `summary.fulfillment_failed` so the caller can act.
       out.successful.push({
         order_number,
         booking:     value.booking,
@@ -480,6 +526,23 @@ router.post('/batch-book-and-fulfill', authenticateToken, requirePermission('ord
       out.summary.success++;
       if (value.fulfillment?.status !== 'success') out.summary.fulfillment_failed++;
     });
+
+    // Summary log
+    console.log(
+      `[batch-book-and-fulfill] DONE | total: ${out.summary.total} | ` +
+      `success: ${out.summary.success} | failed: ${out.summary.failed} | ` +
+      `fulfillment_failed: ${out.summary.fulfillment_failed}`
+    );
+    out.successful.forEach(s =>
+      console.log(
+        `  ✓ ${s.order_number} | tracking: ${s.booking?.tracking_number ?? 'n/a'} | ` +
+        `slip: ${s.booking?.slip_link ?? 'n/a'} | ` +
+        `shopify_fulfill: ${s.fulfillment?.status === 'success' ? 'ok' : 'FAILED'}`
+      )
+    );
+    out.failed.forEach(f =>
+      console.error(`  ✗ ${f.order_number} | error: ${f.error}`)
+    );
 
     const allFailed   = out.summary.success === 0;
     const hasFailures = out.summary.failed > 0;

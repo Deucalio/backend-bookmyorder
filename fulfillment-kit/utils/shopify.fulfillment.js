@@ -53,6 +53,19 @@ async function shopifyGraphQL(platform_store_id, access_token, query, variables 
     const { data, extensions, errors } = json;
 
     if (errors?.length) {
+      const throttled = errors.find(e => e.extensions?.code === 'THROTTLED');
+      if (throttled) {
+        attempt++;
+        // Shopify GraphQL restore rate is 50 credits/sec
+        const needed = throttled.extensions?.cost ?? extensions?.cost?.requestedQueryCost ?? 50;
+        const waitSec = Math.max(2, Math.ceil(needed / 50));
+        console.log(
+          `[shopify.fulfillment] THROTTLED — need ${needed} credits, waiting ${waitSec}s ` +
+          `(attempt ${attempt}/${max_retries})`,
+        );
+        await new Promise(r => setTimeout(r, waitSec * 1000));
+        continue;
+      }
       throw new Error(errors.map(e => e.message).join(', '));
     }
 

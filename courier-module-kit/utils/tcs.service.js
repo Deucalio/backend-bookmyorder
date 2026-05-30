@@ -61,27 +61,32 @@ class TCSService extends BaseCourierService {
    * @returns {Promise<Object>} standardized success/error response
    */
   async cancelOrder(payload) {
+    const trackingNumber = payload.tracking_number;
     try {
       const access_data = await resolveAccessData(payload);
       const accessToken = access_data?.accesstoken || access_data?.bearertoken || process.env.TCS_BEARER_TOKEN || '';
       if (!accessToken) throw new Error('Missing TCS access token');
-      if (!payload.tracking_number) throw new Error('Missing tracking_number');
+      if (!trackingNumber) throw new Error('Missing tracking_number');
+
+      console.log(`[TCS] Cancel | tracking: ${trackingNumber}`);
 
       const headers = {
         'Authorization': `Bearer ${access_data?.bearertoken || process.env.TCS_BEARER_TOKEN || accessToken}`
       };
 
       const requestData = {
-        consignmentnumber: payload.tracking_number,
+        consignmentnumber: trackingNumber,
         accesstoken: accessToken
       };
 
       const response = await this.makeAPICallWithRetry('/api/booking/cancel', requestData, headers);
+      console.log(`[TCS] Cancel response for ${trackingNumber}:`, JSON.stringify(response, null, 2));
 
       if (response.message === 'SUCCESS' || response.success === true) {
+        console.log(`[TCS] Cancel SUCCESS | tracking: ${trackingNumber}`);
         return this.successResponse({
           message: 'Order cancelled successfully with TCS',
-          tracking_number: payload.tracking_number,
+          tracking_number: trackingNumber,
           response_data: response
         });
       }
@@ -89,6 +94,7 @@ class TCSService extends BaseCourierService {
       throw new Error(response.message || response.error || 'TCS Cancellation Failed');
 
     } catch (error) {
+      console.error(`[TCS] Cancel FAILED | tracking: ${trackingNumber ?? 'unknown'} | error: ${error.message}`);
       return this.errorResponse(error);
     }
   }

@@ -25,24 +25,31 @@ class LCSService extends BaseCourierService {
    * @returns {Promise<Object>} standardized success/error response
    */
   async bookOrder(payload) {
+    const orderNum = payload.order_info?.order_number ?? 'unknown';
     try {
-      // 1. Validate the standardized payload.
       this.validatePayload(payload);
-
-      // 2. Resolve credentials (inline `credentials` or `courier_account_id`).
       const access_data = await resolveAccessData(payload);
-
-      // 3. Map standardized payload -> LCS-specific request body.
       const lcsPayload = this.mapToLCS(payload, access_data);
 
-      // 4. Call the LCS booking endpoint (with retry).
-      const response = await this.makeAPICallWithRetry('/api/bookPacket/format/json/', lcsPayload);
+      console.log(
+        `[LCS] Booking | order: ${orderNum} | city_id: ${payload.customer_info?.city_id} | ` +
+        `cod: ${payload.order_info?.cod_amount} | weight: ${payload.order_info?.weight} | ` +
+        `service: ${lcsPayload.shipment_type}`
+      );
+      console.log(`[LCS] Payload for ${orderNum}:`, JSON.stringify(lcsPayload, null, 2));
 
-      // 5. Translate LCS response -> standardized response.
-      return this.processLCSResponse(response);
+      const response = await this.makeAPICallWithRetry('/api/bookPacket/format/json/', lcsPayload);
+      console.log(`[LCS] Raw response for ${orderNum}:`, JSON.stringify(response, null, 2));
+
+      const result = this.processLCSResponse(response);
+      console.log(
+        `[LCS] Booking SUCCESS | order: ${orderNum} | tracking: ${result.tracking_number}` +
+        (result.slip_link ? ` | slip: ${result.slip_link}` : '')
+      );
+      return result;
 
     } catch (error) {
-      console.error('[LCS] Booking failed:', error.message);
+      console.error(`[LCS] Booking FAILED | order: ${orderNum} | error: ${error.message}`);
       return this.errorResponse(error);
     }
   }
@@ -54,10 +61,12 @@ class LCSService extends BaseCourierService {
    * @returns {Promise<Object>} standardized success/error response
    */
   async cancelOrder(payload) {
+    const trackingNumber = payload.tracking_number;
     try {
       const access_data = await resolveAccessData(payload);
-      const trackingNumber = payload.tracking_number;
       if (!trackingNumber) throw new Error('Missing tracking_number');
+
+      console.log(`[LCS] Cancel | tracking: ${trackingNumber}`);
 
       const requestData = {
         api_key: access_data.api_key,
@@ -66,11 +75,13 @@ class LCSService extends BaseCourierService {
       };
 
       const response = await this.makeAPICallWithRetry('/api/cancelBookedPackets/format/json/', requestData);
+      console.log(`[LCS] Cancel response for ${trackingNumber}:`, JSON.stringify(response, null, 2));
 
       if (response.status != 1) {
         throw new Error(response.error || response.message || 'LCS Cancellation Failed');
       }
 
+      console.log(`[LCS] Cancel SUCCESS | tracking: ${trackingNumber}`);
       return this.successResponse({
         message: 'Order cancelled successfully',
         tracking_number: trackingNumber,
@@ -78,6 +89,7 @@ class LCSService extends BaseCourierService {
       });
 
     } catch (error) {
+      console.error(`[LCS] Cancel FAILED | tracking: ${trackingNumber ?? 'unknown'} | error: ${error.message}`);
       return this.errorResponse(error);
     }
   }

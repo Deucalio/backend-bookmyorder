@@ -8,6 +8,10 @@ require('dotenv').config();
 const express = require('express');
 const courierRoutes = require('./courier-module-kit/courier.routes');
 const fulfillmentRoutes = require('./fulfillment-kit/fulfillment.routes');
+const orderSyncRoutes = require('./order-sync/routes');
+const webhookProcessorRoutes = require('./webhook-processor/routes');
+const slipRoutes = require('./slip-kit/slip.routes');
+const invoiceRoutes = require('./invoice-kit/invoice.routes');
 
 const app = express();
 
@@ -20,6 +24,10 @@ app.get('/health', (req, res) => {
 
 app.use('/api/courier', courierRoutes);
 app.use('/api/fulfillment', fulfillmentRoutes);
+app.use('/api/orders', orderSyncRoutes);
+app.use('/api/webhooks', webhookProcessorRoutes);
+app.use('/api/slips', slipRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 // Generic 404 / error handlers
 app.use((req, res) => {
@@ -36,4 +44,8 @@ app.listen(PORT, () => {
   console.log(`backend-bookmyorder listening on http://localhost:${PORT}`);
   console.log(`Courier      API mounted at /api/courier`);
   console.log(`Fulfillment  API mounted at /api/fulfillment`);
+  console.log(`Order Sync   API mounted at /api/orders`);
+  console.log(`Webhooks     API mounted at /api/webhooks`);
+  console.log(`Slips        API mounted at /api/slips`);
+  console.log(`Invoices     API mounted at /api/invoices`);
 });

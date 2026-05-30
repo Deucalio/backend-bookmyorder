@@ -21,6 +21,19 @@ const {
   tagOrder,
 } = require('./utils/shopify.fulfillment');
 const batchFulfillmentService = require('./utils/batch.fulfillment.service');
+const { batchCancelOrders } = require('./utils/cancel-orders.service');
+
+function requireInternalSecret(req, res, next) {
+  const secret = process.env.INTERNAL_SECRET;
+  if (!secret) {
+    console.error('[fulfillment] INTERNAL_SECRET not set — rejecting request');
+    return res.status(500).json({ success: false, error: 'Server misconfiguration' });
+  }
+  if (req.headers['x-internal-secret'] !== secret) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  next();
+}
 
 const router = express.Router();
 
@@ -173,6 +186,52 @@ router.post('/tag-order', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 6. Batch-cancel booked parcels and mark affected orders as UNFULFILLED.
+//
+//    Body: { shopDomain: string, orderIds: string[] }
+//    200 — all cancelled
+//    207 — partial success
+//    400 — all failed / validation error
+// ----------------------------------------------------------------------------
+router.post('/batch-cancel-orders', requireInternalSecret, async (req, res) => {
+  const { shopDomain, orderIds } = req.body;
+
+  if (!shopDomain) {
+    return res.status(400).json({ success: false, error: 'shopDomain is required' });
+  }
+  if (!Array.isArray(orderIds) || orderIds.length === 0) {
+    return res.status(400).json({ success: false, error: 'orderIds must be a non-empty array' });
+  }
+
+  try {
+    console.log(`[fulfillment] batch-cancel-orders START | shop: ${shopDomain} | orders: ${orderIds.length} | ids: ${orderIds.join(', ')}`);
+
+    const results = await batchCancelOrders(shopDomain, orderIds);
+
+    console.log(
+      `[fulfillment] batch-cancel-orders DONE | shop: ${shopDomain} | ` +
+      `total: ${results.summary.total} | success: ${results.summary.success} | failed: ${results.summary.failed}`
+    );
+    (results.successful ?? []).forEach(s =>
+      console.log(`  ✓ order: ${s.orderId} | tracking: ${s.trackingNumber ?? 'n/a'} | courier: ${s.courierCode ?? 'n/a'}`)
+    );
+    (results.failed ?? []).forEach(f =>
+      console.error(`  ✗ order: ${f.orderId} | error: ${f.error}`)
+    );
+
+    const nothingToDo = results.summary.total === 0;
+    const allFailed = results.summary.success === 0 && results.summary.total > 0;
+    const hasFailures = results.summary.failed > 0;
+    const statusCode = nothingToDo || allFailed ? 400 : hasFailures ? 207 : 200;
+
+    return res.status(statusCode).json({ success: !allFailed && !nothingToDo, ...results });
+  } catch (err) {
+    console.error('[fulfillment] batch-cancel-orders error:', err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
