@@ -13,6 +13,7 @@ const webhookProcessorRoutes = require('./webhook-processor/routes');
 const slipRoutes = require('./slip-kit/slip.routes');
 const invoiceRoutes = require('./invoice-kit/invoice.routes');
 const adminRoutes = require('./admin-kit/admin.routes');
+const { startTrackingSyncCron } = require('./tracking-sync/cron');
 
 const app = express();
 
@@ -51,4 +52,5 @@ app.listen(PORT, () => {
   console.log(`Slips        API mounted at /api/slips`);
   console.log(`Invoices     API mounted at /api/invoices`);
   console.log(`Admin        API mounted at /api/admin`);
+  startTrackingSyncCron();
 });

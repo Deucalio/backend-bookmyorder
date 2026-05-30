@@ -55,13 +55,14 @@ async function ensureCreditRefresh(shopId) {
   if (Date.now() < next.getTime()) return shop;
 
   const limit = planFor(shop.plan).creditsPerCycle;
-  const refreshedAt = new Date();
+  // Stamp the calculated anniversary, not `new Date()` — otherwise the cycle
+  // slides forward by however long the first post-anniversary webhook took.
   await prisma.shop.update({
     where: { id: shopId },
-    data: { credits: limit, creditsRenewedAt: refreshedAt },
+    data: { credits: limit, creditsRenewedAt: next },
   });
   console.log(`[credits] refreshed shop ${shopId} → ${limit} (${shop.plan})`);
-  return { ...shop, credits: limit, creditsRenewedAt: refreshedAt };
+  return { ...shop, credits: limit, creditsRenewedAt: next };
 }
 
 /**

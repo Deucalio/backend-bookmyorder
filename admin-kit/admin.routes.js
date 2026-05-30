@@ -11,6 +11,7 @@
 
 const express = require('express');
 const prisma = require('../utils/prisma');
+const { runTrackingSync } = require('../tracking-sync/syncTracking');
 
 const router = express.Router();
 
@@ -100,6 +101,25 @@ router.post('/wipe-shop', requireInternalSecret, async (req, res) => {
   } catch (error) {
     console.error('[admin/wipe-shop] error:', error);
     return res.status(500).json({ success: false, error: error.message || 'Failed to wipe shop' });
+  }
+});
+
+// POST /api/admin/sync-tracking
+// Manual trigger for the daily tracking-sync cron. With no body it runs the
+// full job (queue drain + eligible). With { fulfillmentIds: [...] } it
+// re-syncs only those rows (bypasses the terminal-status filter so you can
+// force-refresh already-DELIVERED orders during testing).
+router.post('/sync-tracking', requireInternalSecret, async (req, res) => {
+  try {
+    const { fulfillmentIds } = req.body || {};
+    if (fulfillmentIds && (!Array.isArray(fulfillmentIds) || fulfillmentIds.some((id) => typeof id !== 'string'))) {
+      return res.status(400).json({ success: false, error: 'fulfillmentIds must be an array of strings' });
+    }
+    const summary = await runTrackingSync({ fulfillmentIds });
+    return res.status(200).json({ success: true, summary });
+  } catch (error) {
+    console.error('[admin/sync-tracking] error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to run tracking sync' });
   }
 });
 
