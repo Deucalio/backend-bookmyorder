@@ -42,7 +42,10 @@ model Shop {
   uninstalledAt DateTime?
 
   plan             String    @default("free")
-  credits          Int       @default(50)
+  // Merchant has explicitly picked a plan in the onboarding flow. The default
+  // `plan` is "free" so we wouldn't otherwise know — this flag is the gate.
+  isOnboarded      Boolean   @default(false)
+  credits          Int       @default(300)
   creditsRenewedAt DateTime?
 
   initialSyncCompletedAt DateTime?
@@ -59,6 +62,7 @@ model Shop {
   webhookEvents    WebhookEvent[]
   addressMatchLogs AddressMatchLog[]
   customTabs       CustomTab[]
+  stoppedOrders    StoppedOrder[]
 
   @@index([shopDomain])
 }
@@ -402,4 +406,27 @@ model CustomTab {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, position])
+}
+
+// STOPPED ORDER (Free-plan orders received over webhook after credits exhausted)
+//
+// These rows hold the raw orders/create webhook payload so we can replay them
+// into Order if the merchant upgrades. We only ever write — replay is a manual
+// step done elsewhere.
+model StoppedOrder {
+  id              String   @id @default(cuid())
+  shopId          String
+  shopifyOrderId  BigInt
+  // Light denormalised fields for the dashboard summary; the source of truth
+  // for restoring is `payload`.
+  orderName       String?
+  customerName    String?
+  totalAmount     Float?
+  payload         Json
+  receivedAt      DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, shopifyOrderId])
+  @@index([shopId, receivedAt])
 }

@@ -3,6 +3,7 @@ const { matchLocation } = require('../utils/location-matcher');
 const { matchArea } = require('../utils/area-matcher');
 const { logMatchAttempt } = require('../utils/address-match-log');
 const { shopifyRestGet } = require('../utils/shopify-api');
+const { consumeCreditForNewOrder, recordStoppedOrder } = require('../utils/credits');
 
 // REST order webhooks send fulfillment_status as null/'fulfilled'/'partial'/
 // 'restocked'. The DB column stores the GraphQL displayFulfillmentStatus enum,
@@ -161,6 +162,23 @@ async function upsertOrderFromWebhook(shopId, shopDomain, order) {
       addressMatchLogId: true,
     },
   });
+
+  // Credit gate — applies only to NET-NEW orders received over webhook. Updates
+  // (`existing != null`) and the initial backfill (which goes through the sync
+  // path, not this function) are exempt.
+  if (existing == null) {
+    const gate = await consumeCreditForNewOrder(shopId);
+    if (!gate.allowed) {
+      await recordStoppedOrder(shopId, order);
+      console.log(
+        `[credits] ${order.name} stopped for ${shopDomain} — credits exhausted (plan: ${gate.plan})`,
+      );
+      return;
+    }
+    console.log(
+      `[credits] ${order.name} accepted for ${shopDomain} — ${gate.remaining === Infinity ? 'unlimited' : `${gate.remaining} left`}`,
+    );
+  }
 
   const addressUnchanged =
     existing != null &&
@@ -360,7 +378,18 @@ async function handleAppUninstalled(shopDomain) {
   });
   if (!shop) return; // already gone / never installed
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(
+    async (tx) => {
+    // BookingAttempt.orderId is a String (no FK), and BookingAttempt.fulfillmentId
+    // uses SetNull on cascade. So if we just delete the Shop, the BookingAttempt
+    // audit rows would linger orphaned. Clear them explicitly first.
+    const orderIds = (
+      await tx.order.findMany({ where: { shopId: shop.id }, select: { id: true } })
+    ).map((o) => o.id);
+    if (orderIds.length > 0) {
+      await tx.bookingAttempt.deleteMany({ where: { orderId: { in: orderIds } } });
+    }
+
     // Break the Order ↔ AddressMatchLog circular FK before cascade fires
     await tx.order.updateMany({
       where: { shopId: shop.id },
@@ -368,12 +397,20 @@ async function handleAppUninstalled(shopDomain) {
     });
 
     // Deleting the shop cascades to:
-    //   Order → Fulfillment, TrackingEvent
-    //   AddressMatchLog
+    //   Order              → Fulfillment → TrackingEvent
     //   ShopCourier
+    //   CourierCityStats
     //   WebhookEvent
+    //   AddressMatchLog
+    //   CustomTab
+    //   StoppedOrder
+    // Session rows are deleted by the Remix uninstall route (it owns those).
     await tx.shop.delete({ where: { id: shop.id } });
-  });
+    },
+    // Cascade across Order → Fulfillment → TrackingEvent plus sibling tables
+    // can blow past the 5s default on busy shops.
+    { timeout: 60_000, maxWait: 10_000 },
+  );
 
   console.log(`[webhook-processor] Shop ${shopDomain} uninstalled — all data deleted`);
 }

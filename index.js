@@ -12,6 +12,7 @@ const orderSyncRoutes = require('./order-sync/routes');
 const webhookProcessorRoutes = require('./webhook-processor/routes');
 const slipRoutes = require('./slip-kit/slip.routes');
 const invoiceRoutes = require('./invoice-kit/invoice.routes');
+const adminRoutes = require('./admin-kit/admin.routes');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/orders', orderSyncRoutes);
 app.use('/api/webhooks', webhookProcessorRoutes);
 app.use('/api/slips', slipRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Generic 404 / error handlers
 app.use((req, res) => {
@@ -48,4 +50,5 @@ app.listen(PORT, () => {
   console.log(`Webhooks     API mounted at /api/webhooks`);
   console.log(`Slips        API mounted at /api/slips`);
   console.log(`Invoices     API mounted at /api/invoices`);
+  console.log(`Admin        API mounted at /api/admin`);
 });
