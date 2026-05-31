@@ -258,9 +258,20 @@ async function upsertOrderFromWebhook(shopId, shopDomain, order) {
     shopifyUpdatedAt: new Date(order.updated_at),
   };
 
+  // Parcel weight (kg) = sum of all line-item weights (grams). Prefer Shopify's
+  // order-level total_weight; fall back to summing line items. Set on create
+  // only so an orders/update never overwrites a merchant-saved weight.
+  const totalWeightGrams = Number(order.total_weight) > 0
+    ? Number(order.total_weight)
+    : (order.line_items ?? []).reduce(
+        (sum, li) => sum + (Number(li.grams) || 0) * (Number(li.quantity) || 1),
+        0,
+      );
+  const parcelWeight = totalWeightGrams > 0 ? Math.round(totalWeightGrams / 10) / 100 : null;
+
   await prisma.order.upsert({
     where: { shopId_shopifyOrderId: { shopId, shopifyOrderId } },
-    create: data,
+    create: { ...data, parcelWeight },
     update: data,
   });
 

@@ -70,6 +70,7 @@ async function syncOrders(shopDomain, accessToken, daysBack = 60) {
           select: {
             shopifyOrderId: true,
             shopifyFulfillmentOrderId: true,
+            parcelWeight: true,
             rawCity: true,
             addressLine1: true,
             addressLine2: true,

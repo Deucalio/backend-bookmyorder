@@ -23,6 +23,7 @@ async function refreshOrders(shopDomain, accessToken) {
       shopifyOrderId: true,
       shopifyOrderGid: true,
       shopifyFulfillmentOrderId: true,
+      parcelWeight: true,
       rawCity: true,
       addressLine1: true,
       addressLine2: true,

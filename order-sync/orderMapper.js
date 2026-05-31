@@ -30,6 +30,7 @@ const ORDER_NODE_FIELDS = `
   subtotalPriceSet { shopMoney { amount currencyCode } }
   totalPriceSet { shopMoney { amount currencyCode } }
   currencyCode
+  totalWeight
   customer { email phone firstName lastName }
   shippingAddress {
     address1 address2 city province zip phone firstName lastName name
@@ -170,6 +171,12 @@ async function mapOrderToRecord(shopId, o, existing) {
   const shopifyFulfillmentOrderStatus = foNode?.status ?? null;
   const shopifyFulfillmentOrderUpdatedAt = foNode?.updatedAt ? new Date(foNode.updatedAt) : null;
 
+  // Parcel weight (kg) from Shopify's order-level total weight (grams = sum of
+  // all line-item weights). Preserve a merchant-saved value; only backfill when
+  // the order doesn't have one yet.
+  const totalWeightGrams = Number(o.totalWeight) || 0;
+  const computedParcelWeight = totalWeightGrams > 0 ? Math.round(totalWeightGrams / 10) / 100 : null;
+
   return {
     shopId,
     shopifyOrderId: orderId,
@@ -190,6 +197,7 @@ async function mapOrderToRecord(shopId, o, existing) {
     subtotal: parseFloat(o.subtotalPriceSet?.shopMoney?.amount || 0),
     totalAmount: parseFloat(o.totalPriceSet?.shopMoney?.amount || 0),
     codAmount: parseFloat(o.totalPriceSet?.shopMoney?.amount || 0),
+    parcelWeight: existing?.parcelWeight ?? computedParcelWeight,
     currency: o.currencyCode || 'PKR',
     financialStatus: o.displayFinancialStatus || 'PENDING',
     fulfillmentStatus: o.displayFulfillmentStatus || 'UNFULFILLED',
