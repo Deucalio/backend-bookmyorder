@@ -238,8 +238,9 @@ async function syncFulfillmentsForOrders(orders, orderIdMap) {
       const tracking = fulfillment.trackingInfo?.[0] ?? {};
       const courierName = tracking.company || 'manual';
       // Normalize to our internal id (e.g. "Leopards Courier" → "leopards")
-      // so the DB stores a consistent value. Falls back to a slugged name
-      // only when the company isn't one of our supported couriers.
+      // via the single-source courierCompanies file, matching what
+      // bookOrders.server.ts writes. Translation to the external API code
+      // (LCS/TCS) only happens at the API boundary via findCourier().
       const matched = findCourier(courierName);
       const courierCode = matched ? matched.id : courierName.toLowerCase().replace(/\s+/g, '_');
 

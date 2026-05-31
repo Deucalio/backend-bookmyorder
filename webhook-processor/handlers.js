@@ -300,7 +300,9 @@ async function upsertFulfillmentFromWebhook(shopId, fulfillment) {
 
   const courierName = fulfillment.tracking_company || 'manual';
   // Normalize to our internal id (e.g. "Leopards Courier" → "leopards") via
-  // findCourier so the DB stays consistent with bookOrders.server.ts writes.
+  // the single-source courierCompanies file, matching what bookOrders.server.ts
+  // writes. Translation to the external API code (LCS/TCS) only happens at
+  // the API boundary via findCourier().
   const matched = findCourier(courierName);
   const courierCode = matched ? matched.id : courierName.toLowerCase().replace(/\s+/g, '_');
 
