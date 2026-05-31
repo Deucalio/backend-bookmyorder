@@ -299,12 +299,11 @@ async function upsertFulfillmentFromWebhook(shopId, fulfillment) {
       : null;
 
   const courierName = fulfillment.tracking_company || 'manual';
-  // Normalize to our internal id (e.g. "Leopards Courier" → "leopards") via
-  // the single-source courierCompanies file, matching what bookOrders.server.ts
-  // writes. Translation to the external API code (LCS/TCS) only happens at
-  // the API boundary via findCourier().
+  // Store the external courier code (e.g. "Leopards Courier" → "LCS") via the
+  // single-source courierCompanies file, matching what bookOrders.server.ts
+  // writes onto the per-order Fulfillment record.
   const matched = findCourier(courierName);
-  const courierCode = matched ? matched.id : courierName.toLowerCase().replace(/\s+/g, '_');
+  const courierCode = matched ? matched.courier_code : courierName.toLowerCase().replace(/\s+/g, '_');
 
   const existing = await prisma.fulfillment.findFirst({
     where: { orderId: order.id, shopifyFulfillmentId },
