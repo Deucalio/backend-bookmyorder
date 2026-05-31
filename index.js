@@ -14,6 +14,7 @@ const slipRoutes = require('./slip-kit/slip.routes');
 const invoiceRoutes = require('./invoice-kit/invoice.routes');
 const adminRoutes = require('./admin-kit/admin.routes');
 const { startTrackingSyncCron } = require('./tracking-sync/cron');
+const { warmupPdfPipeline } = require('./utils/pdfWarmup');
 
 const app = express();
 
@@ -53,4 +54,7 @@ app.listen(PORT, () => {
   console.log(`Invoices     API mounted at /api/invoices`);
   console.log(`Admin        API mounted at /api/admin`);
   startTrackingSyncCron();
+  // Fire-and-forget — keeps boot non-blocking. First user slip/invoice
+  // request after this resolves is fast; before it, we eat the cold-start.
+  warmupPdfPipeline();
 });

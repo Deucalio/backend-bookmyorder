@@ -107,13 +107,13 @@ async function postBatchWithRetry(items) {
 }
 
 /**
- * Persist events + roll up status for one fulfillment. Skips UNKNOWN events
- * (the upstream sends timezone-skewed duplicates with UNKNOWN status). If
- * the API returned zero events we still update lastTrackingAt so the row
- * doesn't stay in a "never synced" limbo.
+ * Persist events + roll up status for one fulfillment. Saves every event the
+ * upstream returns — including UNKNOWN ones — so the merchant sees the full
+ * raw timeline. The (fulfillmentId, eventAt, description) unique key still
+ * dedupes if the same event ships twice.
  */
 async function persistResult(fulfillmentId, result) {
-  const events = (result.events || []).filter((e) => e.status && e.status !== 'UNKNOWN');
+  const events = (result.events || []).filter((e) => e.status);
 
   await prisma.$transaction(async (tx) => {
     for (const e of events) {
@@ -265,7 +265,7 @@ async function runTrackingSync(opts = {}) {
       }
       try {
         await persistResult(fulfillmentId, r);
-        summary.eventsWritten += (r.events || []).filter((e) => e.status && e.status !== 'UNKNOWN').length;
+        summary.eventsWritten += (r.events || []).filter((e) => e.status).length;
         summary.succeeded += 1;
         successIds.push(fulfillmentId);
       } catch (e) {

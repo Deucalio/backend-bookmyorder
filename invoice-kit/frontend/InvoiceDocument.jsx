@@ -89,7 +89,9 @@ const InvoiceDocument = ({ invoice, footerNote }) => {
     );
   }
 
-  const money = (n) => `${currency} ${Number(n || 0).toLocaleString()}`;
+  // Display whole-number currency only — round to nearest integer so unit
+  // prices and totals don't show decimals.
+  const money = (n) => `${currency} ${Math.round(Number(n || 0)).toLocaleString()}`;
 
   return (
     <Document>
