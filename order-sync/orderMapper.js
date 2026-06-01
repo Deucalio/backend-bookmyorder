@@ -250,12 +250,14 @@ async function syncFulfillmentsForOrders(orders, orderIdMap) {
       // bookOrders.server.ts writes onto the per-order Fulfillment record.
       const matched = findCourier(courierName);
       const courierCode = matched ? matched.courier_code : courierName.toLowerCase().replace(/\s+/g, '_');
+      // Store the canonical display name (e.g. "LCS" / "Leopards Courier Services" → "Leopards Courier").
+      const displayCourierName = matched ? matched.courier_name : courierName;
 
       const sharedData = {
         shopifyFulfillmentId,
         shopifyFulfillmentGid: fulfillment.id,
         courierCode,
-        courierName,
+        courierName: displayCourierName,
         trackingNumber: tracking.number || null,
         trackingUrl: tracking.url || null,
         status: mappedStatus,
