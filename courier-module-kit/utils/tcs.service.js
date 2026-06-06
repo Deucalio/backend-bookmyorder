@@ -13,6 +13,11 @@ const { resolveAccessData, resolveCityName } = require('./courier.credentials');
 class TCSService extends BaseCourierService {
   constructor() {
     super('TCS', process.env.TCS_API_URL || 'https://ociconnect.tcscourier.com/ecom');
+    // Short-lived TCS access tokens cached in-memory per account so we don't
+    // re-authenticate on every booking. `_tokenInflight` dedupes concurrent
+    // fetches (e.g. a batch of bookings arriving at once).
+    this._tokenCache = new Map();    // key -> { token, expiresAt }
+    this._tokenInflight = new Map(); // key -> Promise<string>
   }
 
   // ===========================================================================
@@ -25,10 +30,16 @@ class TCSService extends BaseCourierService {
    * @returns {Promise<Object>} standardized success/error response
    */
   async bookOrder(payload) {
+    let access_data;
     try {
       this.validatePayload(payload);
 
-      const access_data = await resolveAccessData(payload);
+      access_data = await resolveAccessData(payload);
+
+      // TCS' booking endpoint needs a short-lived access token (exchanged from
+      // the bearer token via /api/authentication/token). Reuses a cached token
+      // when available so mapToTCS sends a real access token, not the bearer.
+      access_data.accesstoken = await this.resolveAccessToken(access_data);
 
       // TCS books with a city NAME. If only an internal city_id was supplied,
       // try to resolve it via the optional city-lookup adapter.
@@ -50,6 +61,9 @@ class TCSService extends BaseCourierService {
 
     } catch (error) {
       console.error('[TCS] Booking failed:', error.message);
+      // A failure may be a stale/expired token — drop it so the next attempt
+      // re-authenticates.
+      if (access_data) this._invalidateToken(access_data);
       return this.errorResponse(error);
     }
   }
@@ -64,7 +78,9 @@ class TCSService extends BaseCourierService {
     const trackingNumber = payload.tracking_number;
     try {
       const access_data = await resolveAccessData(payload);
-      const accessToken = access_data?.accesstoken || access_data?.bearertoken || process.env.TCS_BEARER_TOKEN || '';
+      // Exchange the bearer token for a short-lived access token (cancel uses
+      // the same token in the request body as booking).
+      const accessToken = await this.resolveAccessToken(access_data);
       if (!accessToken) throw new Error('Missing TCS access token');
       if (!trackingNumber) throw new Error('Missing tracking_number');
 
@@ -142,6 +158,65 @@ class TCSService extends BaseCourierService {
 
     } catch (error) {
       return this.errorResponse(error);
+    }
+  }
+
+  /**
+   * Resolve a usable TCS access token for booking/cancel calls.
+   *
+   * TCS' booking API authenticates each call with a SHORT-LIVED access token
+   * (sent in the request body), obtained from /api/authentication/token using
+   * the long-lived bearer token + username + password. We fetch a fresh one per
+   * call unless one was already supplied. Falls back to the bearer token only
+   * when we can't authenticate (legacy behavior; TCS may reject it).
+   *
+   * @param {Object} access_data
+   * @returns {Promise<string>}
+   */
+  async resolveAccessToken(access_data = {}) {
+    if (access_data.accesstoken) return access_data.accesstoken;
+
+    const { bearertoken, username, password } = access_data;
+    if (!bearertoken || !username || !password) {
+      // Can't authenticate — legacy fallback (TCS' booking API may reject it).
+      return bearertoken || process.env.TCS_BEARER_TOKEN || '';
+    }
+
+    const key = `${username}::${String(bearertoken).slice(-12)}`;
+
+    // 1. Reuse a still-valid cached token.
+    const cached = this._tokenCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.token;
+
+    // 2. Reuse an in-flight fetch (dedupes a burst of concurrent bookings).
+    const inflight = this._tokenInflight.get(key);
+    if (inflight) return inflight;
+
+    // 3. Fetch a fresh token and cache it for its (assumed) lifetime.
+    const ttlMs = Number(process.env.TCS_TOKEN_TTL_MS) || 4 * 60 * 1000; // default 4 min
+    const promise = (async () => {
+      const auth = await this.getAuthToken({ bearertoken, username, password });
+      console.log("[TCS Auth Response]: ", auth);
+      if (!auth.success || !auth.accesstoken) {
+        throw new Error('TCS authentication failed: ' + (auth.error || 'no access token returned'));
+      }
+      this._tokenCache.set(key, { token: auth.accesstoken, expiresAt: Date.now() + ttlMs });
+      return auth.accesstoken;
+    })();
+
+    this._tokenInflight.set(key, promise);
+    try {
+      return await promise;
+    } finally {
+      this._tokenInflight.delete(key);
+    }
+  }
+
+  /** Drop a cached token (e.g. after a booking failed — it may be stale). */
+  _invalidateToken(access_data = {}) {
+    const { bearertoken, username } = access_data;
+    if (bearertoken && username) {
+      this._tokenCache.delete(`${username}::${String(bearertoken).slice(-12)}`);
     }
   }
 
